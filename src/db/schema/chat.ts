@@ -1,10 +1,9 @@
 import { pgTable, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { nanoid } from "nanoid";
 import { users } from "./auth";
 
 export const chatSessions = pgTable("chat_session", {
-  id: text("id").primaryKey().$defaultFn(() => nanoid()),
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").references(() => users.id),
   title: text("title"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -12,7 +11,7 @@ export const chatSessions = pgTable("chat_session", {
 });
 
 export const chatMessages = pgTable("chat_message", {
-  id: text("id").primaryKey().$defaultFn(() => nanoid()),
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   sessionId: text("session_id").references(() => chatSessions.id, { onDelete: "cascade" }),
   role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
   content: text("content").notNull(),

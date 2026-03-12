@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     let menuContext = "";
     try {
       const [vector] = await generateEmbeddings([message]);
-      const searchResults = await searchSimilarMenu(vector, 3);
+      const searchResults = await searchSimilarMenu(vector, 5);
 
       const contextItems = (searchResults as Array<{ payload?: Record<string, unknown> }>)
         .map((p) => {

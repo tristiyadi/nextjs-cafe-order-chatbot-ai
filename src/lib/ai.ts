@@ -34,7 +34,7 @@ async function getPopularMenuContext() {
     return `\nMENU POPULER KAMI:\n${popularItems
       .map(
         (item) =>
-          `- ${item.name}: ${item.description} (Rp${parseFloat(item.price).toLocaleString("id-ID")})`,
+          `- ${item.name} (Rp${parseFloat(item.price).toLocaleString("id-ID")}): ${item.description}`,
       )
       .join("\n")}`;
   } catch (err) {
@@ -50,24 +50,24 @@ export async function getChatResponse(
 ) {
   const popularContext = await getPopularMenuContext();
 
-  const systemPrompt = `Kamu adalah Kafi, barista virtual ramah di Kafe Nusantara.
-Tugas utamamu adalah melayani pelanggan dengan pengetahuan menu yang akurat dari database kami.
+  const systemPrompt = `Anda adalah Kafi, barista Kafe Nusantara.
+Gunakan data menu di bawah ini untuk menjawab secara ramah dan singkat.
 
-ATURAN KOMUNIKASI:
-1. Berbahasa Indonesia yang ramah, hangat, dan profesional namun santai.
-2. Jawaban harus singkat, padat, dan informatif.
-3. Selalu rekomendasikan menu populer jika pelanggan bingung memilih.
-4. Gunakan data menu di bawah ini. Jika tidak ada, katakan dengan sopan bahwa menu tersebut tidak tersedia.
-
-DATA MENU DARI DATABASE:
+MENU KAMI:
 ${popularContext}
 
-${searchContext ? `MENU RELEVAN DENGAN PERTANYAAN (HASIL PENCARIAN):\n${searchContext}` : ""}
+${searchContext ? `PENCARIAN RELEVAN:\n${searchContext}` : ""}
 
-INSTRUKSI KHUSUS:
-- Gunakan data harga dan deskripsi yang persis sesuai database.
-- Jika pelanggan ingin memesan, konfirmasi nama menu.`;
+ATURAN:
+1. Berbahasa Indonesia ramah dan santai.
+2. Jawab sesuai kategori yang diminta (misal: jika tanya 'minuman', jangan sebut 'makanan/snack').
+3. Kamu WAJIB menuliskan harga di samping nama menu (Contoh: Nama Menu (Rp10.000)).
+4. Gunakan daftar bullet (-) untuk menu baru dan berikan deskripsi singkat.
+5. Jika tidak ada di data, katakan tidak tersedia.
 
+CONTOH FORMAT:
+- Nama Menu (Rp18.000): Deskripsi.`;
+console.log("systemPrompt: ", systemPrompt)
   const messages = [
     { role: "system", content: systemPrompt },
     ...history.map((m) => ({

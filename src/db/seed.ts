@@ -1,7 +1,6 @@
 import { db } from "./index";
 import { categories, menuItems, users, accounts } from "./schema";
 import { hashPassword } from "better-auth/crypto";
-import { nanoid } from "nanoid";
 import { generateEmbeddings } from "../lib/embedding";
 import { ensureCollection, upsertMenuItemVector } from "../lib/qdrant";
 import * as dotenv from "dotenv";
@@ -71,14 +70,14 @@ async function seed() {
     // 2.5 Seed Users (Admin & Kitchen)
     const SEED_USERS = [
       {
-        id: nanoid(),
+        id: crypto.randomUUID(),
         name: "Admin Kafe",
         email: "admin@kafe.id",
         role: "admin",
         password: "adminpassword123",
       },
       {
-        id: nanoid(),
+        id: crypto.randomUUID(),
         name: "Staf Dapur",
         email: "kitchen@kafe.id",
         role: "kitchen",
@@ -100,7 +99,7 @@ async function seed() {
 
       const hashed = await hashPassword(user.password);
       await db.insert(accounts).values({
-        id: nanoid(),
+        id: crypto.randomUUID(),
         userId: user.id,
         accountId: user.email,
         providerId: "credential",

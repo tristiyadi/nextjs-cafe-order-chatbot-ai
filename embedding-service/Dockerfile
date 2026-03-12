@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install CPU-only torch to save space and avoid Mac VirtioFS IO errors, disable pip progress bar
+RUN pip install --no-cache-dir --progress-bar off -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Pre-download model during build to speed up container startup
 # use_fp16=False for CPU compatibility

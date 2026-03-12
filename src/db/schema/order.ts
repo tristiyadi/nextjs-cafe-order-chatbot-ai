@@ -1,11 +1,10 @@
 import { pgTable, text, decimal, integer, timestamp } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { nanoid } from "nanoid";
 import { users } from "./auth";
 import { menuItems, customizeOptions } from "./menu";
 
 export const orders = pgTable("order", {
-  id: text("id").primaryKey().$defaultFn(() => nanoid()),
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("user_id").references(() => users.id),
   customerName: text("customer_name"),
   tableNumber: text("table_number"),
@@ -17,7 +16,7 @@ export const orders = pgTable("order", {
 });
 
 export const orderItems = pgTable("order_item", {
-  id: text("id").primaryKey().$defaultFn(() => nanoid()),
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   orderId: text("order_id").references(() => orders.id, { onDelete: "cascade" }),
   menuItemId: text("menu_item_id").references(() => menuItems.id, { onDelete: "set null" }),
   quantity: integer("quantity").notNull(),
@@ -27,7 +26,7 @@ export const orderItems = pgTable("order_item", {
 });
 
 export const itemCustomizations = pgTable("item_customization", {
-  id: text("id").primaryKey().$defaultFn(() => nanoid()),
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   orderItemId: text("order_item_id").references(() => orderItems.id, { onDelete: "cascade" }),
   customizeOptionId: text("customize_option_id").references(() => customizeOptions.id, { onDelete: "set null" }),
   optionValue: text("option_value"),

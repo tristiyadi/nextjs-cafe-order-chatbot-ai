@@ -88,7 +88,7 @@ export function ChatBox() {
               </div>
               <div
                 className={cn(
-                  "rounded-2xl p-3 text-sm shadow-sm leading-relaxed",
+                  "rounded-2xl p-3 text-sm shadow-sm leading-relaxed whitespace-pre-wrap",
                   m.role === "user"
                     ? "bg-primary text-primary-foreground rounded-tr-none"
                     : "bg-muted/80 backdrop-blur-sm border rounded-tl-none text-foreground"
