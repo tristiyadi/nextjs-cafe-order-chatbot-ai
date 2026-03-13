@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # Database: PostgreSQL with persistence
   db:
-    image: postgres:latest
+    image: postgres:17-alpine
     container_name: cafe-db
     restart: always
     environment:
@@ -35,26 +35,30 @@ services:
       timeout: 5s
       retries: 5
 
-  # Embedding Service (Python BGE-M3)
+  # Embedding Service
   embedding:
     build:
       context: ./embedding-service
       dockerfile: Dockerfile
+      args:
+        - MODEL_NAME=${EMBEDDING_MODEL_ID:-intfloat/multilingual-e5-small}
     container_name: cafe-embedding
     restart: always
     ports:
       - "8001:8001"
     environment:
-      - MODEL_NAME=intfloat/multilingual-e5-small
+      - MODEL_NAME=${EMBEDDING_MODEL_ID:-intfloat/multilingual-e5-small}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Local LLM Service (Ollama)
+  # Local LLM Service (with pre-built models)
   llm:
-    image: ollama/ollama:latest
+    build:
+      context: ./llm
+      dockerfile: Dockerfile
     container_name: cafe-llm
     restart: always
     ports:
@@ -67,41 +71,32 @@ services:
       timeout: 5s
       retries: 5
 
-  # Sidekick service to auto-pull the minimalist model
-  llm-init:
-    image: curlimages/curl:latest
-    container_name: cafe-llm-init
-    depends_on:
-      llm:
-        condition: service_healthy
-    entrypoint: [ "sh", "-c", "curl -X POST http://llm:11434/api/pull -d '{\"name\": \"llama3.2:1b\"}'" ]
-
   # Main Next.js Web App
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: cafe-app
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=postgres://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD:-password}@db:5432/${DATABASE_NAME:-cafe_db}
-      - QDRANT_URL=http://qdrant:6333
-      - EMBEDDING_SERVICE_URL=http://embedding:8001
-      - LOCAL_LLM_URL=http://llm:11434/v1
-      - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-llama3.2:1b}
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-your-better-auth-secret}
-      - BETTER_AUTH_URL=http://localhost:3000
-    depends_on:
-      db:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      embedding:
-        condition: service_healthy
-      llm:
-        condition: service_healthy
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: cafe-app
+  #   restart: always
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=postgres://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD:-password}@db:5432/${DATABASE_NAME:-cafe_db}
+  #     - QDRANT_URL=http://qdrant:6333
+  #     - EMBEDDING_SERVICE_URL=http://embedding:8001
+  #     - LOCAL_LLM_URL=http://llm:11434/v1
+  #     - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-llama3.2:1b}
+  #     - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-your-better-auth-secret}
+  #     - BETTER_AUTH_URL=http://localhost:3000
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     qdrant:
+  #       condition: service_healthy
+  #     embedding:
+  #       condition: service_healthy
+  #     llm:
+  #       condition: service_healthy
 
 volumes:
   postgres_data:

@@ -1,0 +1,1 @@
+ALTER TABLE "menu_item" ADD COLUMN "embedding_vector" numeric(12, 10)[];

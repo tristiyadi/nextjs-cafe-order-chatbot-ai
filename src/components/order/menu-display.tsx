@@ -17,6 +17,7 @@ interface MenuItem {
   description: string;
   price: string;
   isPopular: boolean;
+  imageUrl?: string | null;
   category: {
     name: string;
     slug: string;
@@ -52,18 +53,25 @@ export function MenuDisplay() {
   };
 
   useEffect(() => {
-    // Initial fetch
-    fetchMenu();
-    
-    // Fetch categories
+    // Initial fetch categories
     fetch("/api/menu/categories")
       .then(res => res.json())
       .then(data => setCategories(data.results || []));
   }, []);
 
+  // Handle debounced search and category filtering
+  useEffect(() => {
+    setLoading(true); // Start loading UI immediately
+    const timer = setTimeout(() => {
+      fetchMenu(search, activeCategory);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search, activeCategory]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchMenu(search);
+    fetchMenu(search, activeCategory);
   };
 
   return (
@@ -76,10 +84,8 @@ export function MenuDisplay() {
              className="pl-12 h-12 rounded-2xl shadow-sm border-primary/10 bg-background/50 focus-visible:ring-primary/20"
              value={search}
              onChange={(e) => setSearch(e.target.value)}
+             onBlur={() => fetchMenu(search, activeCategory)}
            />
-           <Button type="submit" size="sm" className="absolute right-2 top-2 h-8 rounded-xl px-4 text-xs font-bold gap-1 shadow-md">
-             Cari <Sparkles className="h-3 w-3" />
-           </Button>
         </form>
         
         <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
@@ -90,7 +96,6 @@ export function MenuDisplay() {
              onClick={() => {
                setActiveCategory("all");
                setSearch("");
-               fetchMenu("", "all");
              }}
            >
              Semua
@@ -104,7 +109,6 @@ export function MenuDisplay() {
                onClick={() => {
                  setActiveCategory(c.slug);
                  setSearch("");
-                 fetchMenu("", c.slug);
                }}
              >
                {c.name}
@@ -115,9 +119,20 @@ export function MenuDisplay() {
 
       <ScrollArea className="h-[500px] md:h-[60vh] lg:h-[70vh] border rounded-3xl p-4 md:p-6 bg-accent/5 backdrop-blur-sm border-primary/5 shadow-inner">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground italic py-20">
-            <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
-            <p className="animate-pulse">Menghadirkan kenikmatan...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="rounded-2xl border border-primary/5 bg-white/50 animate-pulse overflow-hidden">
+                <div className="h-40 bg-gray-200/50" />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 w-3/4 bg-gray-200/50 rounded" />
+                  <div className="h-3 w-full bg-gray-200/50 rounded" />
+                  <div className="flex justify-between items-center pt-2">
+                    <div className="h-6 w-20 bg-gray-200/50 rounded" />
+                    <div className="h-10 w-10 bg-gray-200/50 rounded-xl" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20 flex flex-col items-center gap-4">
@@ -133,15 +148,27 @@ export function MenuDisplay() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {items.map((item) => (
               <Card key={item.id} className="group overflow-hidden rounded-2xl border-primary/5 hover:border-primary/20 hover:shadow-xl transition-all duration-300">
-                <div className="h-40 bg-muted relative overflow-hidden flex items-center justify-center">
-                   <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
-                   <Coffee className="h-12 w-12 text-primary/20" />
+                <div className="h-48 bg-muted relative overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform duration-700">
+                   {item.imageUrl ? (
+                     <img 
+                       id={`item-img-${item.id}`}
+                       src={item.imageUrl} 
+                       alt={item.name} 
+                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                     />
+                   ) : (
+                     <>
+                       <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
+                       <Coffee className="h-12 w-12 text-primary/20" />
+                     </>
+                   )}
+                   
                    {item.isPopular && (
-                     <Badge className="absolute top-3 left-3 bg-amber-500 hover:bg-amber-600 border-none shadow-md gap-1">
+                     <Badge className="absolute top-3 left-3 bg-amber-500/90 backdrop-blur-md hover:bg-amber-600 border-none shadow-lg gap-1 z-10">
                        <Star className="h-3 w-3 fill-current" /> Populer
                      </Badge>
                    )}
-                   <Badge variant="secondary" className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-wider backdrop-blur-lg border-white/20">
+                   <Badge variant="secondary" className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-wider backdrop-blur-lg border-white/20 z-10">
                      {item.category?.name || "Lainnya"}
                    </Badge>
                 </div>
@@ -160,10 +187,53 @@ export function MenuDisplay() {
                         <span className="text-xl font-bold text-primary tracking-tight">Rp {parseFloat(item.price).toLocaleString('id-ID')}</span>
                      </div>
                      <Button 
+                       id={`add-btn-${item.id}`}
                        size="icon" 
-                       className="rounded-xl h-10 w-10 shadow-lg shadow-primary/20 pointer-events-auto"
+                       className="rounded-xl h-10 w-10 shadow-lg shadow-primary/20 pointer-events-auto transition-all active:scale-95 cursor-pointer hover:shadow-2xl hover:-translate-y-1"
                        onClick={(e) => {
                          e.stopPropagation();
+                         
+                         const sourceImg = document.getElementById(`item-img-${item.id}`);
+                         const sourceBtn = document.getElementById(`add-btn-${item.id}`);
+                         const targetCart = document.getElementById('cart-btn');
+                         
+                         const targetEl = sourceImg || sourceBtn;
+                         
+                         if (targetEl && targetCart) {
+                           const start = targetEl.getBoundingClientRect();
+                           const end = targetCart.getBoundingClientRect();
+                           
+                           const el = document.createElement('div');
+                           el.className = "fixed z-[100] flex items-center justify-center rounded-2xl shadow-2xl pointer-events-none overflow-hidden bg-primary";
+                           el.style.width = "40px"; el.style.height = "40px";
+                           el.style.left = `${start.left}px`; el.style.top = `${start.top}px`;
+                           
+                           if (item.imageUrl) {
+                             el.innerHTML = `<img src="${item.imageUrl}" class="w-full h-full object-cover" />`;
+                           } else {
+                             el.style.color = "white";
+                             el.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
+                           }
+                           
+                           document.body.appendChild(el);
+                           
+                           el.animate([
+                             { left: `${start.left}px`, top: `${start.top}px`, transform: 'scale(2) rotate(0deg)', opacity: 1 },
+                             { left: `${end.left + 5}px`, top: `${end.top + 5}px`, transform: 'scale(0.1) rotate(720deg)', opacity: 0 }
+                           ], {
+                             duration: 900,
+                             easing: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                             fill: 'forwards'
+                           }).onfinish = () => {
+                             el.remove();
+                             targetCart.animate([
+                               { transform: 'scale(1)' },
+                               { transform: 'scale(1.4)' },
+                               { transform: 'scale(1)' }
+                             ], { duration: 400 });
+                           };
+                         }
+
                          addItem({
                            menuItemId: item.id,
                            name: item.name,

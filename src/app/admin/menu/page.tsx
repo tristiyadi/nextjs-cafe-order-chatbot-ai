@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Coffee, Search, Plus, Trash2, Edit3, Save, X, Filter, LayoutGrid, Star, Loader2 } from "lucide-react";
+import { Coffee, Search, Plus, Trash2, Edit3, Save, X, Filter, LayoutGrid, Star, Loader2, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +84,19 @@ export default function AdminMenuPage() {
     }
   };
 
+  const handleDeleteItem = async (id: string) => {
+    if (!confirm("Hapus menu ini secara permanen?")) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/menu/${id}`, { method: "DELETE" });
+      if (res.ok) fetchData();
+    } catch (err) {
+      console.error("Delete Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-accent/5">
       <Navbar />
@@ -96,9 +109,18 @@ export default function AdminMenuPage() {
                  <h1 className="text-4xl md:text-5xl lg:text-7xl font-black font-serif text-foreground leading-tight italic tracking-tighter">Manajemen <span className="text-primary italic">Menu</span></h1>
                  <p className="text-muted-foreground text-lg md:text-xl leading-relaxed max-w-xl">Tambahkan atau perbarui daftar menu Kafe Nusantara Anda secara efisien.</p>
               </div>
-              <Button onClick={() => setIsAdding(!isAdding)} className="rounded-full px-8 h-14 text-lg font-bold gap-3 shadow-xl shadow-primary/30 animate-in slide-in-from-bottom-4">
-                 {isAdding ? <><X className="h-5 w-5" /> Batal</> : <><Plus className="h-5 w-5" /> Tambah Menu</>}
-              </Button>
+            <div className="flex gap-4">
+               <Button 
+                 onClick={() => window.location.href = '/kitchen'}
+                 variant="outline" 
+                 className="rounded-full px-8 h-14 text-sm font-bold gap-3 border-primary/20 hover:bg-primary hover:text-white transition-all shadow-lg"
+               >
+                 <LayoutDashboard className="h-5 w-5" /> Monitor Kitchen
+               </Button>
+               <Button onClick={() => setIsAdding(!isAdding)} className="rounded-full px-8 h-14 text-lg font-bold gap-3 shadow-xl shadow-primary/30 animate-in slide-in-from-bottom-4">
+                  {isAdding ? <><X className="h-5 w-5" /> Batal</> : <><Plus className="h-5 w-5" /> Tambah Menu</>}
+               </Button>
+            </div>
            </div>
 
            {isAdding && (
@@ -242,7 +264,7 @@ export default function AdminMenuPage() {
                                    <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-primary/10 hover:bg-primary/5 hover:text-primary transition-all">
                                       <Edit3 className="h-5 w-5" />
                                    </Button>
-                                   <Button variant="ghost" size="icon" className="h-12 w-12 rounded-2xl text-destructive hover:bg-red-50 transition-all">
+                                   <Button variant="ghost" size="icon" className="h-12 w-12 rounded-2xl text-destructive hover:bg-red-50 transition-all" onClick={() => handleDeleteItem(item.id)}>
                                       <Trash2 className="h-5 w-5" />
                                    </Button>
                                 </div>

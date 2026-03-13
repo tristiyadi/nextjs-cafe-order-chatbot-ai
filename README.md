@@ -23,23 +23,34 @@ npm install --legacy-peer-deps
 ```
 
 ### 3. Environment Configuration
-Create a `.env` file in the root directory. You can copy the template below:
+Create a `.env` file in the root directory. You can use the values below as a template:
 
 ```bash
-# Database (PostgreSQL)
+# Database (PostgreSQL 17)
 DATABASE_USER=postgres
 DATABASE_PASSWORD=password
 DATABASE_NAME=cafe_db
-DATABASE_URL=postgres://postgres:password@localhost:5432/cafe_db
+DATABASE_URL=postgres://postgres:password@127.0.0.1:5432/cafe_db
 
 # Qdrant (Vector DB)
 QDRANT_URL=http://localhost:6333
 
-# AI Services
-LOCAL_LLM_API_KEY=ollama
+# AI Services Choice
+# LLM_TYPE: openai, ollama, mistral, qwen
+LLM_TYPE=ollama
+# EMBEDDING_TYPE: bge-m3, multilingual-e5
+EMBEDDING_TYPE=multilingual-e5
+# Mapping EMBEDDING_TYPE to Model ID for docker-compose build
+EMBEDDING_MODEL_ID=intfloat/multilingual-e5-small
+
+# Local AI Configuration
 LOCAL_LLM_URL=http://localhost:11434/v1
 LOCAL_LLM_MODEL=llama3.2:1b
 EMBEDDING_SERVICE_URL=http://localhost:8001
+
+# OpenAI Configuration (Optional)
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
 
 # Better Auth
 BETTER_AUTH_SECRET=your-random-secret-key-12345
@@ -47,15 +58,13 @@ BETTER_AUTH_URL=http://localhost:3000
 ```
 
 ### 4. Lift the Infrastructure (Docker)
-We use Docker to run the database, vector store, and AI services. This ensures a consistent environment for everyone.
+We use Docker to run the database (Postgres 17), vector store (Qdrant), and specialized AI engines.
 
 ```bash
-# Start all background services
-docker compose up -d db qdrant embedding llm llm-init
+# 1. Build and start services
+# Note: the LLM build will pre-download Llama, Mistral, and Qwen models.
+docker compose up -d --build
 ```
-
-> [!NOTE]
-> The `llm-init` service will automatically download the `llama3.2:1b` model once the LLM service is ready. This might take a few minutes depending on your internet speed.
 
 ### 5. Initialize the Database
 Once the database container is healthy, you need to set up the tables and initial data.
@@ -67,7 +76,7 @@ npm run db:generate
 # 2. Apply migrations to your Postgres container
 npm run db:migrate
 
-# 3. Seed the database with sample menu items and AI embeddings
+# 3. Seed the database (Populates menu + Generates AI Embeddings)
 npm run seed
 ```
 
@@ -93,82 +102,58 @@ Visit **[http://localhost:3000](http://localhost:3000)** to experience the app!
 
 ---
 
-## 🚀 Key Technologies
+## 🔍 Vector Analysis & Monitoring
 
-*   **Next.js 15**: Core framework with App Router and Server Components.
-*   **Drizzle ORM**: Type-safe database interactions with PostgreSQL.
-*   **Qdrant**: High-performance vector database for semantic menu search.
-*   **FastAPI + e5-small**: Specialized Python service for generating Indonesian-optimized embeddings.
-*   **Ollama**: Local execution of Llama 3 models for private, fast AI chat.
-*   **Better Auth**: Secure, modern authentication with role-based access.
+You can monitor and analyze the AI embedding data through the following tools:
+
+### 1. Postgres Vector Storage (via Drizzle Studio)
+We store the raw embedding vectors in the `menu_item` table for analysis. You can view them by running:
+```bash
+npm run db:studio
+```
+Open the `menu_item` table to see the `embedding_vector` field populated with numerical arrays.
+
+### 2. Qdrant Vector Dashboard
+To visualize how the AI "sees" your menu items in the vector space and test similarity search:
+1.  Open your browser and go to **[http://localhost:6333/dashboard](http://localhost:6333/dashboard)**.
+2.  Select the `menu_items` collection.
+3.  You can browse stored points or test searches using vectors.
 
 ---
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+## 🚀 Key Technologies
 
-## Docker Compose (Full Stack)
+*   **Next.js 15**: Core framework with App Router and Server Components.
+*   **PostgreSQL 17**: Robust relational database for core business logic.
+*   **Drizzle ORM**: Type-safe database interactions.
+*   **Qdrant**: High-performance vector database for semantic menu search.
+*   **FastAPI + FlagEmbedding**: Specialized Python service for BGE-M3/E5 embeddings.
+*   **Ollama (Pre-built)**: Custom Docker service with pre-baked Llama, Mistral, and Qwen models.
+*   **Better Auth**: Secure, modern authentication with role-based access.
 
-To run everything containerized:
-
-```bash
-docker compose up --build
-```
-
-## Access Points
-
-| URL | Description |
-|---|---|
-| `http://localhost:3000` | Customer Portal (Landing + Order) |
-| `http://localhost:3000/login` | Login |
-| `http://localhost:3000/register` | Register |
-| `http://localhost:3000/order` | Chat + Menu (Split View) |
-| `http://localhost:3000/order/cart` | Order Cart |
-| `http://localhost:3000/order/track` | Order Tracking |
-| `http://localhost:3000/kitchen` | Kitchen Dashboard |
-| `http://localhost:3000/admin/menu` | Admin Menu Management |
-
-## NPM Scripts
-
-| Script | Description |
-|---|---|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run seed` | Seed database with sample data + embeddings |
-| `npm run db:generate` | Generate Drizzle migrations from schema |
-| `npm run db:migrate` | Apply migrations to database |
-| `npm run db:studio` | Open Drizzle Studio (visual DB browser) |
+---
 
 ## Project Structure
 
 ```
 cafe-chatbot/
 ├── src/
-│   ├── app/
-│   │   ├── (auth)/          # Login, Register pages
-│   │   ├── (customer)/      # Landing, Order, Cart, Track
-│   │   ├── admin/           # Admin menu management
-│   │   ├── kitchen/         # Kitchen dashboard
-│   │   └── api/             # API Route Handlers
-│   ├── components/
-│   │   ├── ui/              # Shadcn components
-│   │   ├── order/           # ChatBox, MenuDisplay
-│   │   └── layout/          # Navbar
-│   ├── db/
-│   │   ├── schema/          # Drizzle ORM schema + relations
-│   │   ├── migrations/      # Generated SQL migrations
-│   │   └── seed.ts          # Database seeder
-│   ├── hooks/               # useCart (Zustand)
-│   └── lib/                 # Auth, AI, Qdrant, Embedding clients
-├── embedding-service/       # Python FastAPI + Multilingual-E5-Small (intfloat)
-├── docker-compose.yml
-├── Dockerfile
-└── drizzle.config.ts
+│   ├── app/                 # Next.js App Router (Auth, Customer, Admin, Kitchen)
+│   ├── components/          # React Components (UI, Order, Layout)
+│   ├── db/                  # Drizzle Schema, Migrations, and Seeder
+│   ├── hooks/               # Custom React Hooks (Zustand)
+│   └── lib/                 # Service Clients (AI, Qdrant, Embedding, Auth)
+├── llm/                     # Custom Ollama Dockerfile with pre-baked models
+├── embedding-service/       # Python FastAPI Embedding Engine
+├── docker-compose.yml       # Full-stack orchestration
+├── Dockerfile               # Production Next.js Dockerfile
+└── drizzle.config.ts        # Drizzle ORM Configuration
 ```
 
+---
 
-## 📖 Project Documentation
+<!-- ## 📖 Project Documentation
 
 Detailed information is available in the dedicated specification files:
 *   📄 **[Product Specification](./product_specification.md)** — Core features and data models.
-*   📋 **[Implementation Plan](./implementation_plan.md)** — Architectural roadmap and building blocks.
+*   📋 **[Implementation Plan](./implementation_plan.md)** — Architectural roadmap and building blocks. -->

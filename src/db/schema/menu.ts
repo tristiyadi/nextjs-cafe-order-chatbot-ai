@@ -19,6 +19,7 @@ export const menuItems = pgTable("menu_item", {
   isAvailable: boolean("is_available").default(true),
   isPopular: boolean("is_popular").default(false),
   embeddingText: text("embedding_text"),
+  embeddingVector: decimal("embedding_vector", { precision: 12, scale: 10 }).array(), // Store for analysis
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

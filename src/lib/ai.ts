@@ -6,17 +6,40 @@ import OpenAI from "openai";
 /**
  * Configuration from environment
  */
-const API_KEY = process.env.LOCAL_LLM_API_KEY; // Presence of this key switches to OpenAI SDK
-const BASE_URL = process.env.LOCAL_LLM_URL || "http://localhost:11434/v1";
-const MODEL_NAME = process.env.LOCAL_LLM_MODEL || "llama3.2:1b";
+const LLM_TYPE = (process.env.LLM_TYPE || "ollama").toLowerCase();
+const OLLAMA_BASE_URL = process.env.LOCAL_LLM_URL || "http://localhost:11434/v1";
+const OLLAMA_MODEL_NAME = process.env.LOCAL_LLM_MODEL || "llama3.2:1b";
 
-// Optional OpenAI client (only used if API_KEY is defined)
-let openai: OpenAI | null = null;
-if (API_KEY && API_KEY !== "ollama") {
-  openai = new OpenAI({
-    baseURL: BASE_URL,
-    apiKey: API_KEY,
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+// Initializing AI Client
+let openaiClient: OpenAI | null = null;
+if ((LLM_TYPE === "openai" || LLM_TYPE === "openapi") && OPENAI_API_KEY) {
+  openaiClient = new OpenAI({
+    apiKey: OPENAI_API_KEY,
   });
+} else if (LLM_TYPE === "ollama" || LLM_TYPE === "mistral" || LLM_TYPE === "qwen") {
+  // Use OpenAI SDK (compatible with Ollama /v1)
+  openaiClient = new OpenAI({
+    baseURL: OLLAMA_BASE_URL,
+    apiKey: "ollama", // Dummy for Ollama
+  });
+}
+
+// Determine actual model name to use
+function getModelName() {
+  switch (LLM_TYPE) {
+    case "openai":
+    case "openapi":
+      return OPENAI_MODEL;
+    case "mistral":
+      return "mistral";
+    case "qwen":
+      return "qwen2.5:1.5b"; 
+    default:
+      return OLLAMA_MODEL_NAME;
+  }
 }
 
 /**
@@ -77,46 +100,24 @@ console.log("systemPrompt: ", systemPrompt)
     { role: "user", content: currentMessage },
   ];
 
-  // SWITCHING LOGIC
-  if (openai) {
-    // --- APPROACH 1: OpenAI SDK (Active when API_KEY is present) ---
-    try {
-      const response = await openai.chat.completions.create({
-        model: MODEL_NAME,
-        messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
-        temperature: 0.6,
-        max_tokens: 500,
-      });
-
-      return (
-        response.choices[0]?.message?.content || "Maaf, Kafi bingung sebentar."
-      );
-    } catch (error) {
-      console.error("SDK AI Error:", error);
-    }
+  // AI INFERENCE
+  if (!openaiClient) {
+    return "Maaf, Kafi belum dikonfigurasi dengan benar (API Key/LLM Type).";
   }
 
-  // --- APPROACH 2: Native Ollama API (Default / No API Key) ---
   try {
-    // Clean URL for native endpoint (strip /v1)
-    const nativeHost = BASE_URL.replace("/v1", "");
-    const response = await fetch(`${nativeHost}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        messages: messages,
-        stream: false,
-      }),
+    const response = await openaiClient.chat.completions.create({
+      model: getModelName(),
+      messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
+      temperature: 0.6,
+      max_tokens: 500,
     });
 
-    if (!response.ok)
-      throw new Error(`Ollama fetch failed: ${response.statusText}`);
-
-    const data = await response.json();
-    return data.message.content;
+    return (
+      response.choices[0]?.message?.content || "Maaf, Kafi bingung sebentar."
+    );
   } catch (error) {
-    console.error("Native Ollama Error:", error);
-    return "Maaf, Kafi sedang mengalami kendala teknis. Mohon coba beberapa saat lagi.";
+    console.error("AI Error:", error);
+    return "Maaf, sedang ada kendala pada otak Kafi. Mohon coba beberapa saat lagi.";
   }
 }

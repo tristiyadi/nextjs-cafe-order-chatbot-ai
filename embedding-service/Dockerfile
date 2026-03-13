@@ -14,8 +14,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --progress-bar off -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Pre-download model during build to speed up container startup
-# use_fp16=False for CPU compatibility
-RUN python -c "from FlagEmbedding import FlagModel; FlagModel('intfloat/multilingual-e5-small', use_fp16=False)"
+# Default is e5-small, but can be overridden during build
+ARG MODEL_NAME=intfloat/multilingual-e5-small
+ENV MODEL_NAME=$MODEL_NAME
+
+# use_fp16=False for CPU compatibility during build
+RUN python -c "from FlagEmbedding import FlagModel; import os; FlagModel(os.getenv('MODEL_NAME'), use_fp16=False)"
 
 COPY . .
 

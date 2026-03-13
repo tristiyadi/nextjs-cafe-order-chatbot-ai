@@ -1,8 +1,9 @@
 import { db } from "./index";
-import { categories, menuItems, users, accounts } from "./schema";
+import { categories, menuItems, users, accounts, sessions, verifications, orders, orderItems, itemCustomizations, chatSessions, chatMessages, customizeOptions } from "./schema";
 import { hashPassword } from "better-auth/crypto";
 import { generateEmbeddings } from "../lib/embedding";
 import { ensureCollection, upsertMenuItemVector } from "../lib/qdrant";
+import { eq } from "drizzle-orm";
 import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".env" });
@@ -61,11 +62,19 @@ async function seed() {
     await ensureCollection();
 
     // 2. Clear existing data (development only)
+    await db.delete(itemCustomizations);
+    await db.delete(orderItems);
+    await db.delete(orders);
+    await db.delete(chatMessages);
+    await db.delete(chatSessions);
+    await db.delete(sessions);
     await db.delete(accounts);
+    await db.delete(verifications);
     await db.delete(users);
+    await db.delete(customizeOptions);
     await db.delete(menuItems);
     await db.delete(categories);
-    console.log("✅ Cleared existing menu and user data.");
+    console.log("✅ Cleared existing database tables.");
 
     // 2.5 Seed Users (Admin & Kitchen)
     const SEED_USERS = [
@@ -132,6 +141,14 @@ async function seed() {
       console.log(`- Generating embedding for: ${item.name}...`);
       try {
         const [vector] = await generateEmbeddings([embeddingText]);
+        
+        // Update DB with vector
+        await db.update(menuItems)
+          .set({ 
+            embeddingVector: vector.map(v => v.toString()) // Convert to strings for decimal array if needed, or just number if doublePrecision
+          })
+          .where(eq(menuItems.id, insertedItem.id));
+
         await upsertMenuItemVector(insertedItem.id, vector, {
           menu_item_id: insertedItem.id,
           name: insertedItem.name,
@@ -139,7 +156,7 @@ async function seed() {
           price: parseFloat(item.price),
           is_available: true,
         });
-        console.log(`  ✅ Vector upserted.`);
+        console.log(`  ✅ Vector upserted and stored in DB.`);
       } catch (err) {
         console.error(`  ❌ Failed to embed/upsert vector for ${item.name}:`, err);
       }

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { Coffee, Search, ArrowRight, Star, CheckCircle2, Zap, Heart } from "lucide-react";
@@ -5,8 +8,32 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
+import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function LandingPage() {
+  const { data: session, isPending } = authClient.useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isPending && session) {
+      const role = (session.user as any).role;
+      if (role === "admin") router.push("/admin/menu");
+      if (role === "kitchen") router.push("/kitchen");
+    }
+  }, [session, isPending, router]);
+
+  if (isPending) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="font-black uppercase tracking-widest text-xs opacity-50">Menyiapkan Pesanan...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
       <Navbar />
